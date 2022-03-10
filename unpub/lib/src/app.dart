@@ -42,6 +42,9 @@ class App {
   final Future<void> Function(
       Map<String, dynamic> pubspec, String uploaderEmail)? uploadValidator;
 
+  /// authenticate the user for the given request.
+  final Future<String> Function(shelf.Request req)? getUploaderEmail;
+
   App({
     required this.metaStore,
     required this.packageStore,
@@ -49,6 +52,7 @@ class App {
     this.googleapisProxy,
     this.overrideUploaderEmail,
     this.uploadValidator,
+    this.getUploaderEmail,
   });
 
   static shelf.Response _okWithJson(Map<String, dynamic> data) =>
@@ -222,7 +226,7 @@ class App {
   @Route.post('/api/packages/versions/newUpload')
   Future<shelf.Response> upload(shelf.Request req) async {
     try {
-      var uploader = await _getUploaderEmail(req);
+      var uploader = await (getUploaderEmail ?? _getUploaderEmail)(req);
 
       var contentType = req.headers['content-type'];
       if (contentType == null) throw 'invalid content type';
@@ -349,7 +353,7 @@ class App {
   Future<shelf.Response> addUploader(shelf.Request req, String name) async {
     var body = await req.readAsString();
     var email = Uri.splitQueryString(body)['email']!; // TODO: null
-    var operatorEmail = await _getUploaderEmail(req);
+    var operatorEmail = await (getUploaderEmail ?? _getUploaderEmail)(req);
     var package = await metaStore.queryPackage(name);
 
     if (package?.uploaders?.contains(operatorEmail) == false) {
@@ -367,7 +371,7 @@ class App {
   Future<shelf.Response> removeUploader(
       shelf.Request req, String name, String email) async {
     email = Uri.decodeComponent(email);
-    var operatorEmail = await _getUploaderEmail(req);
+    var operatorEmail = await (getUploaderEmail ?? _getUploaderEmail)(req);
     var package = await metaStore.queryPackage(name);
 
     // TODO: null
